@@ -4,8 +4,8 @@ set -e
 set -u
 set -o pipefail
 
-if [[ $# != 3 ]]; then
-	echo "usage: ${0} DATABASE TABLE COLUMN
+if [[ $# -lt 3 ]]; then
+	echo "usage: ${0} DATABASE TABLE COLUMN [INDEX...]
 
 Generates SLQ for monthly partitioning of an existing table.
 Do not forget it's required to create partitions manually in
@@ -23,7 +23,12 @@ fi
 
 database=$1
 table=$2
+table_new="${table_new}"
 column=$3
+
+shift
+shift
+shift
 
 from=${FROM:-}
 if [[ -z "${from}" ]]; then
@@ -35,8 +40,8 @@ if [[ -z "${from}" ]]; then
 fi
 
 echo "BEGIN;"
-echo "CREATE TABLE ${table}_new (LIKE ${table} INCLUDING CONSTRAINTS) PARTITION BY RANGE(${column});"
-echo "CREATE TABLE ${table}_default PARTITION OF ${table}_new DEFAULT;"
+echo "CREATE TABLE ${table_new} (LIKE ${table} INCLUDING CONSTRAINTS) PARTITION BY RANGE(${column});"
+echo "CREATE TABLE ${table}_default PARTITION OF ${table_new} DEFAULT;"
 echo
 
 c=$(date -d ${from} +%Y-%m-01)
@@ -47,27 +52,29 @@ while [[ ${c} != ${l} ]]; do
 	n=$(date -d "$(date -d "${c} + 1 month")" +%Y-%m)
 	c=$(date -I -d "${c} + 1 month")
 
-	echo "CREATE TABLE ${table}_${y}_${m} PARTITION OF ${table}_new"
+	echo "CREATE TABLE ${table}_${y}_${m} PARTITION OF ${table_new}"
 	echo "  FOR VALUES FROM ('${y}-${m}-01 00:00:00') TO ('${n}-01 00:00:00');"
 	echo
 done
 
-echo "INSERT INTO ${table}_new (SELECT * FROM ${table});"
-echo "ALTER TABLE ${table}_new ADD CONSTRAINT ${table}_new_pkey PRIMARY KEY (id, ${column});"
+echo "INSERT INTO ${table_new} (SELECT * FROM ${table});"
+echo "ALTER TABLE ${table_new} ADD CONSTRAINT ${table_new}_pkey PRIMARY KEY (id, ${column});"
 echo
-echo "/* Add creation indexes here or create them manually afterwards because we cannot"
-echo "inherit them from the source table with 'INCLUDING INDEXES' since a partitioned"
-echo "table's primary key must include the partition key along with the id field. */"
+
+for index in $@; do
+	echo "CREATE INDEX ${table_new}_on_${index//,/_} ON ${table_new} (${index})"
+done
+
 echo
 echo "LOCK ${table} IN ACCESS EXCLUSIVE MODE;"
-echo "INSERT INTO ${table}_new (SELECT * FROM ${table} WHERE id > (SELECT MAX(id) FROM ${table}_new));"
+echo "INSERT INTO ${table_new} (SELECT * FROM ${table} WHERE id > (SELECT MAX(id) FROM ${table_new}));"
 echo
-echo "CREATE SEQUENCE ${table}_new_id_seq OWNED BY ${table}_new.id;"
-echo "ALTER TABLE ${table}_new ALTER COLUMN id SET DEFAULT nextval('${table}_new_id_seq');"
-echo "SELECT setval('${table}_new_id_seq', MAX(id)) FROM ${table}_new;"
+echo "CREATE SEQUENCE ${table_new}_id_seq OWNED BY ${table_new}.id;"
+echo "ALTER TABLE ${table_new} ALTER COLUMN id SET DEFAULT nextval('${table_new}_id_seq');"
+echo "SELECT setval('${table_new}_id_seq', MAX(id)) FROM ${table_new};"
 echo
 echo "ALTER TABLE ${table} RENAME TO ${table}_old;"
-echo "ALTER TABLE ${table}_new RENAME TO ${table};";
+echo "ALTER TABLE ${table_new} RENAME TO ${table};";
 echo "COMMIT;"
 echo
 echo "/* Do not forget to 'DROP ${table}_old;' once everything is done. */"
