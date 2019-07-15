@@ -31,7 +31,7 @@ name=$(date -d ${from} +%Y_%m)
 echo "BEGIN;"
 echo "ALTER TABLE ${table} DETACH PARTITION ${table}_default;"
 echo "CREATE TABLE IF NOT EXISTS ${table}_${name} PARTITION OF ${table}"
-echo "FOR VALUES FROM ('${from} 00:00:00') TO ('${upto} 00:00:00');"
+echo "  FOR VALUES FROM ('${from} 00:00:00') TO ('${upto} 00:00:00');"
 echo "INSERT INTO ${table}_${name} ("
 echo "  SELECT * FROM ${table}_default "
 echo "  WHERE ${column} >= '${from} 00:00:00' "
