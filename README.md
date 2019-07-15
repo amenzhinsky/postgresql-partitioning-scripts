@@ -1,6 +1,6 @@
 # PostgreSQL Partitioning Scripts
 
-Set of scripts that may help to automize PostgreSQL partitioning routines. All of them generate SQL code so inspect it thoroughly first before executing.
+Set of scripts that may help to automate PostgreSQL partitioning routines. All of them generate SQL code so inspect it thoroughly first before executing.
 
 ## partition-table-monthly.bash
 
@@ -21,3 +21,5 @@ Creates a partition for the previously partitioned table for the upcoming month.
 ```bash
 ./create-monthly-partition.bash orders created_at | psql
 ```
+
+You may also control the current date with `DATE=2018-01-01` environment variable if you need to go back or forward in time..
