@@ -62,7 +62,7 @@ echo "ALTER TABLE ${table_new} ADD CONSTRAINT ${table_new}_pkey PRIMARY KEY (id,
 echo
 
 for index in $@; do
-	echo "CREATE INDEX ${table_new}_on_${index//,/_} ON ${table_new} (${index})"
+	echo "CREATE INDEX ${table_new}_${index//,/_}_idx ON ${table_new} (${index})"
 done
 
 echo
