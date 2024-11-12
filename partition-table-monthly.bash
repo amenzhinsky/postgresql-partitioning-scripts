@@ -23,7 +23,7 @@ fi
 
 database=$1
 table=$2
-table_new="${table_new}"
+table_new="${table}_new"
 column=$3
 
 shift
